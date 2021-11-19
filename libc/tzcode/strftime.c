@@ -635,26 +635,32 @@ _conv(int n, const char *format, char *pt, const char *ptlim)
   int width = format[1] == ' ' ? 0 : format[1] - '0';
 
   char buf[32] __attribute__((__uninitialized__));
+  char* p = buf;
 
-  // Terminate first, so we can walk backwards from the least-significant digit
-  // without having to later reverse the result.
-  char* p = &buf[31];
-  *--p = '\0';
-  char* end = p;
-
-  // Output digits backwards, from least-significant to most.
-  while (n >= 10) {
-    *--p = '0' + (n % 10);
+  // Output digits while we have them.
+  if (n == 0) *p++ = '0';  // Special-case zero.
+  while (n) {
+    unsigned d = n % 10;
     n /= 10;
+    *p++ = d + '0';
   }
-  *--p = '0' + n;
-
-  // Fill if more digits are required by the format.
-  while ((end - p) < width) {
-    *--p = fill;
+  // Fill if required.
+  while ((p - buf) < width) {
+    *p++ = fill;
   }
 
-  return _add(p, pt, ptlim, 0);
+  // Reverse in-place.
+  size_t length = p - buf;
+  for (size_t i = 0, j = length - 1; i < j; ++i, --j) {
+    char ch = buf[i];
+    buf[i] = buf[j];
+    buf[j] = ch;
+  }
+
+  // Terminate.
+  buf[length] = '\0';
+
+  return _add(buf, pt, ptlim, 0);
 }
 
 static char *
